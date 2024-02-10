@@ -1,6 +1,6 @@
 class BooksController < ApplicationController
   before_action :authenticate_user!
-  before_action :ensure_correct_book, only: [:edit, :update, :destroy]
+  before_action :ensure_correct_user, only: [:edit, :update, :destroy]
 
   def show
     @book = Book.find(params[:id])
@@ -10,6 +10,12 @@ class BooksController < ApplicationController
   def index
     @book = Book.new
     @books = Book.all
+    to  = Time.current.at_end_of_day
+    from  = (to - 6.day).at_beginning_of_day
+    @books = Book.all.sort {|a,b| 
+      b.favorites.where(created_at: from...to).size <=> 
+      a.favorites.where(created_at: from...to).size
+    }
   end
 
   def create
@@ -24,11 +30,9 @@ class BooksController < ApplicationController
   end
 
   def edit
-    @book = Book.find(params[:id])
   end
 
   def update
-    @book = Book.find(params[:id])
     if @book.update(book_params)
       redirect_to book_path(@book), notice: "You have updated book successfully."
     else
@@ -37,7 +41,6 @@ class BooksController < ApplicationController
   end
 
   def destroy
-    @book = Book.find(params[:id])
     @book.destroy
     redirect_to books_path
   end
@@ -48,7 +51,7 @@ class BooksController < ApplicationController
     params.require(:book).permit(:title, :body)
   end
   
-  def ensure_correct_book
+  def ensure_correct_user
     @book = Book.find(params[:id])
     unless @book.user == current_user
       redirect_to books_path
